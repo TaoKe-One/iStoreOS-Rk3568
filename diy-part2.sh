@@ -9,7 +9,8 @@
 
 # enable rk3568 model adc keys
 cp -f $GITHUB_WORKSPACE/configfiles/adc-keys.txt adc-keys.txt
-! grep -q 'adc-keys {' package/boot/uboot-rk35xx/src/arch/arm/dts/rk3568-easepi.dts && sed -i '/\"rockchip,rk3568\";/r adc-keys.txt' package/boot/uboot-rk35xx/src/arch/arm/dts/rk3568-easepi.dts
+# 24.10(mainline 6.6)无 uboot-rk35xx 路径,rk35xx 专属操作已停用
+# ! grep -q 'adc-keys {' package/boot/uboot-rk35xx/src/arch/arm/dts/rk3568-easepi.dts && sed -i '/\"rockchip,rk3568\";/r adc-keys.txt' package/boot/uboot-rk35xx/src/arch/arm/dts/rk3568-easepi.dts
 
 # update ubus git HEAD
 cp -f $GITHUB_WORKSPACE/configfiles/ubus_Makefile package/system/ubus/Makefile
@@ -19,7 +20,8 @@ sed -i "s/push @mirrors, 'https:\/\/mirror2.openwrt.org\/sources';/&\\npush @mir
 
 
 # 修改内核配置文件
-sed -i "/.*CONFIG_ROCKCHIP_RGA2.*/d" target/linux/rockchip/rk35xx/config-5.10
+# 24.10(mainline 6.6)无 rk35xx/config-5.10 路径,已停用
+# sed -i "/.*CONFIG_ROCKCHIP_RGA2.*/d" target/linux/rockchip/rk35xx/config-5.10
 # sed -i "/# CONFIG_ROCKCHIP_RGA2 is not set/d" target/linux/rockchip/rk35xx/config-5.10
 # sed -i "/CONFIG_ROCKCHIP_RGA2_DEBUGGER=y/d" target/linux/rockchip/rk35xx/config-5.10
 # sed -i "/CONFIG_ROCKCHIP_RGA2_DEBUG_FS=y/d" target/linux/rockchip/rk35xx/config-5.10
@@ -70,4 +72,24 @@ git clone --depth=1 https://github.com/sirpdboy/luci-app-eqosplus package/luci-a
 
 
 # 复制dts设备树文件到指定目录下
-cp -a $GITHUB_WORKSPACE/configfiles/dts/rk356x/* target/linux/rockchip/dts/rk3568/
+# 第一阶段仅移植 M68S(mainline 6.6),其余 rk356x BSP dts 暂不拷贝以免 6.6 编译失败
+cp -f $GITHUB_WORKSPACE/configfiles/dts/rk356x/rk3568-mrkaio-m68s.dts target/linux/rockchip/dts/rk3568/
+
+# 注入 M68S 机型定义到 armv8.mk(幂等:已存在则跳过)
+ARMV8_MK="target/linux/rockchip/image/armv8.mk"
+if ! grep -q "Device/ezpro_mrkaio-m68s" "$ARMV8_MK"; then
+cat >> "$ARMV8_MK" <<'MKEOF'
+
+define Device/ezpro_mrkaio-m68s
+  DEVICE_VENDOR := EZPRO
+  DEVICE_MODEL := Mrkaio M68S
+  SOC := rk3568
+  DEVICE_DTS_DIR := ../dts
+  DEVICE_DTS = rk3568/rk3568-mrkaio-m68s
+  KERNEL = kernel-bin | lzma | fit lzma $$(KDIR)/image-rk3568-mrkaio-m68s.dtb
+  UBOOT_DEVICE_NAME := mrkaio-m68s-rk3568
+  DEVICE_PACKAGES := kmod-r8169
+endef
+TARGET_DEVICES += ezpro_mrkaio-m68s
+MKEOF
+fi
