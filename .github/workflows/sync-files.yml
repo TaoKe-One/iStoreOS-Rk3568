@@ -3,8 +3,9 @@ name: Sync Files
 on:
   repository_dispatch:
   workflow_dispatch:
-  schedule:
-    - cron: 55 15 * * *
+  # 定时同步已关闭:避免每天用 koolcenter 上游 config 覆盖掉本地的机型精简与驱动修复
+  # schedule:
+  #   - cron: 55 15 * * *
 
 jobs:
   sync:
